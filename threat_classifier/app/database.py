@@ -631,4 +631,31 @@ class ThreatDatabase:
                 seen.add(result["id"])
                 unique_results.append(result)
         
-        return unique_results 
+        return unique_results
+    
+    def report_exists_by_source(self, source_identifier: str) -> bool:
+        """
+        Verifica se um relatório já existe com base no identificador da fonte
+        
+        Args:
+            source_identifier: Identificador único da fonte
+            
+        Returns:
+            True se o relatório já existe
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT COUNT(*) FROM reports 
+                    WHERE fonte = ? OR json_path LIKE ?
+                """, (source_identifier, f"%{source_identifier}%"))
+                
+                count = cursor.fetchone()[0]
+                
+                return count > 0
+                
+        except sqlite3.Error as e:
+            self.logger.error(f"Erro verificando existência do relatório: {e}")
+            return False 

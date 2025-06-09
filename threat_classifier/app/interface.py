@@ -18,6 +18,7 @@ from .database import ThreatDatabase
 from .nlp import ThreatAnalyzer
 from .extractor import TextExtractor
 from .collector import ReportCollector
+from .auto_collector import AutoCollector
 from .utils import setup_logging
 
 
@@ -31,9 +32,10 @@ class ThreatInterface:
         Inicializa a interface
         """
         self.db = ThreatDatabase()
-        self.analyzer = ThreatAnalyzer()
+        self.nlp = ThreatAnalyzer()
         self.extractor = TextExtractor()
         self.collector = ReportCollector()
+        self.auto_collector = AutoCollector(self.db, self.nlp)
         
         # Configura logging
         setup_logging()
@@ -111,7 +113,8 @@ class ThreatInterface:
             [
                 "📊 Dashboard e Estatísticas",
                 "📄 Analisar Novo Relatório", 
-                "📁 Gerenciar e Buscar Relatórios"
+                "📁 Gerenciar e Buscar Relatórios",
+                "🤖 Coleta Automática"
             ]
         )
         
@@ -122,6 +125,8 @@ class ThreatInterface:
             self.show_analysis_page()
         elif page == "📁 Gerenciar e Buscar Relatórios":
             self.show_management_and_search()
+        elif page == "🤖 Coleta Automática":
+            self.show_auto_collection_page()
     
     def show_dashboard_and_statistics(self):
         """
@@ -1145,6 +1150,180 @@ class ThreatInterface:
                             st.error("❌ Erro ao salvar análise no banco de dados")
                     else:
                         st.error("❌ Erro durante a análise do documento")
+
+    def show_auto_collection_page(self):
+        """
+        Página de configuração e controle da coleta automática
+        """
+        st.header("🤖 Coleta Automática de Relatórios")
+        
+        # Status do sistema
+        stats = self.auto_collector.get_statistics()
+        
+        # Controles principais
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if not stats["is_running"]:
+                if st.button("▶️ Iniciar Coleta Automática", type="primary"):
+                    with st.spinner("Iniciando sistema de coleta..."):
+                        self.auto_collector.start_scheduler()
+                        st.success("✅ Sistema de coleta iniciado!")
+                        st.rerun()
+            else:
+                if st.button("⏹️ Parar Coleta Automática", type="secondary"):
+                    with st.spinner("Parando sistema de coleta..."):
+                        self.auto_collector.stop_scheduler()
+                        st.success("✅ Sistema de coleta parado!")
+                        st.rerun()
+        
+        with col2:
+            if st.button("🔄 Executar Coleta Manual"):
+                with st.spinner("Executando coleta manual de todas as fontes..."):
+                    import asyncio
+                    try:
+                        # Cria novo loop se necessário
+                        try:
+                            loop = asyncio.get_event_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                        
+                        results = loop.run_until_complete(self.auto_collector.collect_all_sources())
+                        
+                        st.success(f"✅ Coleta concluída! {results['summary']['new_reports']} novos relatórios coletados")
+                        
+                        with st.expander("📄 Detalhes da Coleta"):
+                            st.json(results)
+                    
+                    except Exception as e:
+                        st.error(f"❌ Erro na coleta: {str(e)}")
+        
+        with col3:
+            st.metric("Status", "🟢 Ativo" if stats["is_running"] else "🔴 Inativo")
+        
+        # Estatísticas do sistema
+        st.divider()
+        st.subheader("📊 Estatísticas do Sistema")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total de Fontes", stats["total_sources"])
+        
+        with col2:
+            st.metric("Fontes Ativas", stats["enabled_sources"])
+        
+        with col3:
+            st.metric("Coletas Realizadas", stats["stats"]["total_collected"])
+        
+        with col4:
+            st.metric("Última Execução", stats["stats"]["last_run"][:16] if stats["stats"]["last_run"] else "Nunca")
+        
+        # Gráfico de fontes por categoria
+        if stats["sources_by_category"]:
+            st.subheader("📈 Distribuição de Fontes por Categoria")
+            
+            categories_df = pd.DataFrame([
+                {"Categoria": k, "Quantidade": v} 
+                for k, v in stats["sources_by_category"].items()
+            ])
+            
+            fig = px.pie(
+                categories_df,
+                values="Quantidade",
+                names="Categoria",
+                title="Fontes Ativas por Categoria"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Configuração de fontes
+        st.divider()
+        st.subheader("⚙️ Configuração de Fontes")
+        
+        sources_status = self.auto_collector.get_sources_status()
+        
+        # Tabs por categoria
+        categories = set(config.get("category", "unknown") for config in sources_status.values())
+        tabs = st.tabs([f"📁 {cat.title()}" for cat in sorted(categories)])
+        
+        for i, category in enumerate(sorted(categories)):
+            with tabs[i]:
+                st.write(f"**Fontes da categoria: {category.title()}**")
+                
+                # Filtra fontes desta categoria
+                category_sources = {
+                    source_id: config for source_id, config in sources_status.items()
+                    if config.get("category", "unknown") == category
+                }
+                
+                for source_id, config in category_sources.items():
+                    with st.expander(f"🔗 {config['name']}", expanded=False):
+                        col1, col2, col3 = st.columns([2, 1, 1])
+                        
+                        with col1:
+                            st.write(f"**URL:** {config['url']}")
+                            st.write(f"**Tipo:** {config['type']}")
+                            st.write(f"**Frequência:** {config['frequency']}")
+                        
+                        with col2:
+                            current_status = config.get("enabled", True)
+                            status_text = "🟢 Ativa" if current_status else "🔴 Inativa"
+                            st.write(f"**Status:** {status_text}")
+                        
+                        with col3:
+                            if current_status:
+                                if st.button(f"❌ Desativar", key=f"disable_{source_id}"):
+                                    self.auto_collector.disable_source(source_id)
+                                    st.success(f"Fonte {config['name']} desativada!")
+                                    st.rerun()
+                            else:
+                                if st.button(f"✅ Ativar", key=f"enable_{source_id}"):
+                                    self.auto_collector.enable_source(source_id)
+                                    st.success(f"Fonte {config['name']} ativada!")
+                                    st.rerun()
+        
+        # Próximas execuções agendadas
+        if stats["is_running"] and stats.get("next_scheduled"):
+            st.divider()
+            st.subheader("⏰ Próximas Execuções Agendadas")
+            
+            for i, next_run in enumerate(stats["next_scheduled"][:5]):
+                st.write(f"**{i+1}.** {next_run}")
+        
+        # Log de atividades recentes
+        st.divider()
+        st.subheader("📝 Informações do Sistema")
+        
+        st.info("""
+        **🤖 Sistema de Coleta Automática**
+        
+        Este sistema coleta automaticamente relatórios de segurança das principais fontes:
+        
+        **📰 Fontes de Notícias:**
+        - Krebs on Security
+        - Threatpost  
+        - Bleeping Computer
+        
+        **🏛️ Fontes Governamentais:**
+        - CISA Security Alerts
+        - US-CERT Alerts
+        
+        **🔬 Fontes de Pesquisa:**
+        - SANS Internet Storm Center
+        
+        **🔓 Bases de Vulnerabilidades:**
+        - MITRE CVE
+        - National Vulnerability Database (NVD)
+        - CISA Known Exploited Vulnerabilities
+        
+        **🦠 Fontes de Malware:**
+        - Malware Bazaar
+        
+        O sistema executa coletas em diferentes frequências (horária, diária, semanal) e 
+        analisa automaticamente o conteúdo coletado usando IA para extrair IoCs, 
+        classificar ameaças e mapear técnicas MITRE ATT&CK.
+        """)
 
     def display_analysis_results(self, analysis: Dict[str, Any]):
         """
