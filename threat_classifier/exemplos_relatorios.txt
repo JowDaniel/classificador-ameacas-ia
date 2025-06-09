@@ -1,0 +1,98 @@
+# 📄 Exemplos de Relatórios para Demonstração
+
+## Relatório 1: Campanha de Ransomware
+
+**Título:** Análise de Campanha Ransomware LockBit 3.0
+
+**Conteúdo:**
+Durante nossa investigação, identificamos uma nova variante do ransomware LockBit 3.0 que tem como alvo organizações de saúde. O malware utiliza as seguintes técnicas:
+
+- **Initial Access (T1566.001)**: Spearphishing com anexos maliciosos
+- **Execution (T1059.001)**: PowerShell para execução de scripts
+- **Defense Evasion (T1027)**: Ofuscação de código
+- **Discovery (T1083)**: Enumeração de arquivos e diretórios
+- **Impact (T1486)**: Criptografia de dados para ransomware
+
+**IoCs Identificados:**
+- IP de Command & Control: 192.168.45.123
+- Domínio malicioso: lockbit-payment.onion
+- Hash SHA256: a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456
+- Email de contato: payment@lockbit-gang.com
+- URL de pagamento: http://lockbit3paymentsxyz.onion/victim123
+
+**Recomendações:**
+Implementar monitoramento para os IoCs identificados e aplicar patches de segurança.
+
+---
+
+## Relatório 2: APT29 (Cozy Bear)
+
+**Título:** Atividade APT29 contra Setor Governamental
+
+**Conteúdo:**
+Detectamos atividade consistente com o grupo APT29 (Cozy Bear) em ataques direcionados ao setor governamental. O grupo utilizou as seguintes TTPs:
+
+- **Initial Access (T1078)**: Contas válidas comprometidas
+- **Persistence (T1547.001)**: Modificação do registro para persistência
+- **Privilege Escalation (T1134)**: Token de acesso manipulation
+- **Credential Access (T1003.001)**: Dumping de LSASS
+- **Lateral Movement (T1021.001)**: RDP para movimento lateral
+
+**Indicadores Técnicos:**
+- Servidor C2: apt29-command.malicious-domain.com
+- IP suspeito: 10.0.0.45
+- Hash MD5: 5d41402abc4b2a76b9719d911017c592
+- Arquivo malicioso: update_system.exe
+- Registry key: HKLM\Software\Microsoft\Windows\CurrentVersion\Run\SystemUpdate
+
+**TTPs Observadas:**
+O atacante demonstrou conhecimento avançado em técnicas de evasão e persistência.
+
+---
+
+## Relatório 3: Phishing Banking Trojan
+
+**Título:** Campanha de Phishing com Banking Trojan Zeus
+
+**Conteúdo:**
+Identificamos uma campanha de phishing direcionada a instituições financeiras utilizando uma variante do Banking Trojan Zeus:
+
+- **Initial Access (T1566.002)**: Spearphishing via link malicioso
+- **Execution (T1204.001)**: Execução pelo usuário de arquivo malicioso
+- **Defense Evasion (T1055)**: Process injection
+- **Collection (T1005)**: Coleta de dados do sistema local
+- **Exfiltration (T1041)**: Exfiltração via C2
+
+**Indicators of Compromise:**
+- Phishing domain: secure-banking-update.net
+- Malicious IP: 203.0.113.42
+- SHA1 hash: da39a3ee5e6b4b0d3255bfef95601890afd80709
+- Fake banking URL: https://fake-bank-login.security-update.org/login
+- Trojan email: security-alert@banking-updates.com
+
+**Análise Comportamental:**
+O malware intercepta credenciais bancárias e realiza transações fraudulentas.
+
+---
+
+## Como Usar Estes Exemplos:
+
+1. **Via Interface Web:**
+   - Acesse "📄 Analisar Novo Relatório"
+   - Selecione "📝 Texto Direto"
+   - Cole um dos relatórios acima
+   - Clique em "🚀 Analisar Relatório"
+
+2. **Via CLI:**
+   - Salve um relatório em um arquivo .txt
+   - Use: `python main.py --analyze`
+
+3. **Para Demonstração Completa:**
+   - Execute: `python main.py --pipeline`
+   - Ou use a interface web em: http://localhost:8501
+
+**Resultados Esperados:**
+- IoCs extraídos automaticamente
+- Classificação correta dos tipos de ameaça
+- Mapeamento preciso das técnicas MITRE ATT&CK
+- Geração de resumos estruturados 
